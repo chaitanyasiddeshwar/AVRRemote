@@ -184,7 +184,7 @@ against a real Marantz CINEMA 50):
 |---|---|---|---|---|
 | Main zone power | `ZM?` | `ZMON` / `ZMOFF` | `^ZM(ON\|OFF)` | Precondition for writes |
 | Dynamic EQ | `PSDYNEQ ?` | `PSDYNEQ ON` / `PSDYNEQ OFF` | `^PSDYNEQ\s*(ON\|OFF)` | `ON`/`OFF` only |
-| Dynamic Volume | `PSDYNVOL ?` | `PSDYNVOL ON` / `PSDYNVOL OFF` | `^PSDYNVOL\s*(ON\|OFF)` | Enabling DynVol also engages DynEQ (Axiom doc) |
+| Dynamic Volume | `PSDYNVOL ?` | `PSDYNVOL OFF/LIT/MED/HEV` | `^PSDYNVOL\s*(OFF\|LIT\|MED\|HEV)` | Tokens are ABBREVIATED (measured live on CINEMA 50: Light=LIT, Medium=MED, Heavy=HEV; `ON`/`LIGHT`/`MEDIUM`/`HEAVY`/`HVY` are all silently rejected). Enabling DynVol also engages DynEQ (Axiom doc) |
 | Speaker preset (read) | `SPPR ?` | — | `^SPPR\s*(1\|2)` | **No reply at all on models without preset support** → feature must degrade to "not supported" |
 | Speaker preset (switch) | — | `SPPR 1` / `SPPR 2` | `^SPPR\s*<n>` | Write ignored while ZMOFF → power on first (§4.2) |
 

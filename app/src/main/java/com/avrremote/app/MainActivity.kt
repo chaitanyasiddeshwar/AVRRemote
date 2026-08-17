@@ -196,14 +196,9 @@ fun ControlScreen(st: AvrState) {
             modifier = Modifier.padding(top = 20.dp),
         )
         ChipRow(
-            options = listOf("OFF" to "Off", "LIGHT" to "Light", "MEDIUM" to "Medium", "HEAVY" to "Heavy"),
+            options = listOf("OFF" to "Off", "LIT" to "Light", "MED" to "Medium", "HEV" to "Heavy"),
             selected = st.dynVol,
             onPick = { AvrController.setDynVol(it) },
-        )
-        Text(
-            "Levels apply only while a Dolby/DTS source is playing",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Text(

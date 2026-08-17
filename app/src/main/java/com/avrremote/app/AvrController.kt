@@ -36,10 +36,12 @@ object AvrController {
 
     private val RE_ZM = Regex("^ZM\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
     private val RE_DYNEQ = Regex("^PSDYNEQ\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
-    private val RE_DYNVOL = Regex("^PSDYNVOL\\s*(OFF|LIGHT|MEDIUM|HEAVY)", RegexOption.IGNORE_CASE)
+    private val RE_DYNVOL = Regex("^PSDYNVOL\\s*(OFF|LIT|MED|HEV)", RegexOption.IGNORE_CASE)
     private val RE_REFLEV = Regex("^PSREFLEV\\s*(0|5|10|15)", RegexOption.IGNORE_CASE)
     private val RE_MULTEQ = Regex("^PSMULTEQ:\\s*(AUDYSSEY|FLAT|OFF)", RegexOption.IGNORE_CASE)
     private val RE_SPPR = Regex("^SPPR\\s*(1|2)", RegexOption.IGNORE_CASE)
+
+    private val DYNVOL_LABELS = mapOf("OFF" to "Off", "LIT" to "Light", "MED" to "Medium", "HEV" to "Heavy")
 
     fun init(context: Context) {
         appContext = context.applicationContext
@@ -99,10 +101,11 @@ object AvrController {
         var v = matchValue(telnet.exec("PSDYNVOL $value", RE_DYNVOL, 2500), RE_DYNVOL)
         if (v == null) v = matchValue(telnet.exec("PSDYNVOL ?", RE_DYNVOL), RE_DYNVOL)
         val ok = v == value
+        val label = DYNVOL_LABELS[value] ?: value
         update {
             it.copy(
                 dynVol = v ?: it.dynVol,
-                error = if (ok) null else "Dynamic Volume $value only applies while a Dolby/DTS source is playing",
+                error = if (ok) null else "Receiver rejected Dynamic Volume '$label'",
             )
         }
     }
