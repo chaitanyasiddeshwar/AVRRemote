@@ -62,9 +62,27 @@ On Windows two convenience scripts are provided:
   `install.bat` discovers and connects automatically. Pairing is needed once —
   `adb pair` with the code shown on the phone.
 
+## Versioning and releases
+
+The app follows semantic versioning, driven by git tags:
+
+- Pushing a tag like `v1.0.1` triggers `.github/workflows/release.yml`,
+  which builds the APK and publishes a GitHub Release named after the tag,
+  with the artifact `AVRRemote-v1.0.1.apk` attached.
+- `versionName` comes from the tag; `versionCode` is derived from it
+  (major × 10000 + minor × 100 + patch), so newer tags always upgrade
+  cleanly over older ones.
+- Local builds default to `1.0.0`; build a specific version with
+  `gradlew assembleDebug -PappVersionName=1.0.1`.
+- CI artifacts are signed with the standard debug key — fine for
+  sideloading. Add release signing via repository secrets if the app ever
+  needs wider distribution.
+
 ## Project notes
 
 - `Agents.md` — the full project plan and protocol notes gathered from the
   reference projects this app was derived from.
+- `docs/probe.md` — how the in-app remote probe works and what has been
+  discovered with it.
 - `gradle wrapper` (Gradle 8.11.1), Android Gradle Plugin 8.7, Kotlin +
   Jetpack Compose, minSdk 26 / target+compileSdk 35.

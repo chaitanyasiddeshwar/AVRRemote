@@ -4,6 +4,15 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Version comes from the git tag via -PappVersionName (see .github/workflows/release.yml);
+// e.g. tag v1.0.2 -> versionName "1.0.2", versionCode 10102.
+val appVersionName = ((findProperty("appVersionName") as String?) ?: "1.0.0").removePrefix("v")
+val appVersionCode = appVersionName.split(".").let { p ->
+    (p.getOrNull(0)?.toIntOrNull() ?: 0) * 10000 +
+        (p.getOrNull(1)?.toIntOrNull() ?: 0) * 100 +
+        (p.getOrNull(2)?.toIntOrNull() ?: 0)
+}
+
 android {
     namespace = "com.avrremote.app"
     compileSdk = 35
@@ -12,8 +21,8 @@ android {
         applicationId = "com.avrremote.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     compileOptions {
