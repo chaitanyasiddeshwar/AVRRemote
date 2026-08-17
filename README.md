@@ -14,7 +14,8 @@ receiver exposing the standard network control interface.
 - **Saved receivers** — the receiver is remembered between app launches. If
   its IP address changes (DHCP), the app re-identifies it by hardware serial
   and reconnects.
-- **Dynamic EQ** — on/off, plus Reference Level Offset (0 / 5 / 10 / 15 dB).
+- **Dynamic EQ** — on/off, Sound Level Compensation (Off / Light / Medium /
+  Heavy) and Reference Level Offset (0 / 5 / 10 / 15 dB).
 - **Dynamic Volume** — Off / Light / Medium / Heavy.
 - **Audyssey MultEQ** — select the correction curve: Audyssey / Flat / Off.
 - **Speaker Preset** — switch between the receiver's two speaker presets.

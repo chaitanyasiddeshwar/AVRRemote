@@ -174,6 +174,17 @@ fun ControlScreen(st: AvrState) {
         SwitchRow("Dynamic EQ", st.dynEq) { AvrController.setDynEq(it) }
 
         Text(
+            "Sound level compensation",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        ChipRow(
+            options = listOf("OFF" to "Off", "LIT" to "Light", "MED" to "Medium", "HEV" to "Heavy"),
+            selected = st.surLev,
+            onPick = { AvrController.setSurLev(it) },
+        )
+
+        Text(
             "DynEQ reference offset",
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(top = 8.dp),

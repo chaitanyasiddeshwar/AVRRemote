@@ -17,6 +17,7 @@ data class AvrState(
     val power: String? = null,
     val dynEq: Boolean? = null,
     val dynVol: String? = null,
+    val surLev: String? = null,
     val refLev: String? = null,
     val multEq: String? = null,
     val preset: String? = null,
@@ -37,11 +38,12 @@ object AvrController {
     private val RE_ZM = Regex("^ZM\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
     private val RE_DYNEQ = Regex("^PSDYNEQ\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
     private val RE_DYNVOL = Regex("^PSDYNVOL\\s*(OFF|LIT|MED|HEV)", RegexOption.IGNORE_CASE)
+    private val RE_SURLEV = Regex("^PSSURLEV\\s*(OFF|LIT|MED|HEV)", RegexOption.IGNORE_CASE)
     private val RE_REFLEV = Regex("^PSREFLEV\\s*(0|5|10|15)", RegexOption.IGNORE_CASE)
     private val RE_MULTEQ = Regex("^PSMULTEQ:\\s*(AUDYSSEY|FLAT|OFF)", RegexOption.IGNORE_CASE)
     private val RE_SPPR = Regex("^SPPR\\s*(1|2)", RegexOption.IGNORE_CASE)
 
-    private val DYNVOL_LABELS = mapOf("OFF" to "Off", "LIT" to "Light", "MED" to "Medium", "HEV" to "Heavy")
+    private val LEVEL_LABELS = mapOf("OFF" to "Off", "LIT" to "Light", "MED" to "Medium", "HEV" to "Heavy")
 
     fun init(context: Context) {
         appContext = context.applicationContext
@@ -101,7 +103,7 @@ object AvrController {
         var v = matchValue(telnet.exec("PSDYNVOL $value", RE_DYNVOL, 2500), RE_DYNVOL)
         if (v == null) v = matchValue(telnet.exec("PSDYNVOL ?", RE_DYNVOL), RE_DYNVOL)
         val ok = v == value
-        val label = DYNVOL_LABELS[value] ?: value
+        val label = LEVEL_LABELS[value] ?: value
         update {
             it.copy(
                 dynVol = v ?: it.dynVol,
@@ -113,6 +115,19 @@ object AvrController {
     fun setRefLev(value: String) = submit {
         val line = telnet.exec("PSREFLEV $value", RE_REFLEV, 2500)
         update { it.copy(refLev = matchValue(line, RE_REFLEV) ?: value) }
+    }
+
+    fun setSurLev(value: String) = submit {
+        var v = matchValue(telnet.exec("PSSURLEV $value", RE_SURLEV, 2500), RE_SURLEV)
+        if (v == null) v = matchValue(telnet.exec("PSSURLEV ?", RE_SURLEV), RE_SURLEV)
+        val ok = v == value
+        val label = LEVEL_LABELS[value] ?: value
+        update {
+            it.copy(
+                surLev = v ?: it.surLev,
+                error = if (ok) null else "Receiver rejected Sound level compensation '$label'",
+            )
+        }
     }
 
     fun setMultEq(curve: String) = submit {
@@ -184,6 +199,7 @@ object AvrController {
         }
         val dynEq = matchValue(telnet.exec("PSDYNEQ ?", RE_DYNEQ), RE_DYNEQ)
         val dynVol = matchValue(telnet.exec("PSDYNVOL ?", RE_DYNVOL), RE_DYNVOL)
+        val surLev = matchValue(telnet.exec("PSSURLEV ?", RE_SURLEV), RE_SURLEV)
         val refLev = matchValue(telnet.exec("PSREFLEV ?", RE_REFLEV), RE_REFLEV)
         val multEq = matchValue(telnet.exec("PSMULTEQ: ?", RE_MULTEQ), RE_MULTEQ)
         val preset = matchValue(telnet.exec("SPPR ?", RE_SPPR, 4000), RE_SPPR)
@@ -192,6 +208,7 @@ object AvrController {
                 power = power,
                 dynEq = dynEq?.let { v -> v == "ON" },
                 dynVol = dynVol,
+                surLev = surLev,
                 refLev = refLev,
                 multEq = multEq,
                 preset = preset,
