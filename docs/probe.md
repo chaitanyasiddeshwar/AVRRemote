@@ -63,9 +63,9 @@ Lines follow the pattern `<PREFIX><VALUE>`:
 | Command | Values | Notes |
 |---|---|---|
 | `PSDYNVOL` | `OFF / LIT / MED / HEV` | Dynamic Volume; abbreviated tokens only |
-| `PSSURLEV` | `OFF / LIT / MED / HEV` | Sound level compensation (under Dynamic EQ) |
+| `PSSURLEV` | `OFF / LIT / MED / HEV` | Sound level compensation (under Dynamic EQ); writes rejected while DynEQ is off |
 | `PSDYNEQ` | `ON / OFF` | Dynamic EQ — no levels exist |
-| `PSREFLEV` | `0 / 5 / 10 / 15` | DynEQ Reference Level Offset |
+| `PSREFLEV` | `0 / 5 / 10 / 15` | DynEQ Reference Level Offset; writes rejected while DynEQ is off |
 | `PSMULTEQ:` | `AUDYSSEY / FLAT / OFF` | MultEQ curve (colon, no space) |
 | `SPPR` | `1 / 2` | Speaker preset; writes ignored while powered off |
 | `ZM` | `ON / OFF` | Main zone power |

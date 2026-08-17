@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,6 +65,7 @@ fun DeviceScreen(st: AvrState) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -151,6 +153,7 @@ fun ControlScreen(st: AvrState) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
@@ -181,17 +184,20 @@ fun ControlScreen(st: AvrState) {
         Text(
             "Sound level compensation",
             style = MaterialTheme.typography.titleSmall,
+            color = if (st.dynEq == true) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 12.dp),
         )
         ChipRow(
             options = listOf("OFF" to "Off", "LIT" to "Light", "MED" to "Medium", "HEV" to "Heavy"),
             selected = st.surLev,
+            enabled = st.dynEq == true,
             onPick = { AvrController.setSurLev(it) },
         )
 
         Text(
             "DynEQ reference offset",
             style = MaterialTheme.typography.titleSmall,
+            color = if (st.dynEq == true) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp),
         )
         ChipRow(

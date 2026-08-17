@@ -117,6 +117,10 @@ object AvrController {
     }
 
     fun setRefLev(value: String) = submit {
+        if (state.value.dynEq != true) {
+            update { it.copy(error = "Enable Dynamic EQ first") }
+            return@submit
+        }
         val line = telnet.exec("PSREFLEV $value", RE_REFLEV, 2500)
         update { it.copy(refLev = matchValue(line, RE_REFLEV) ?: value) }
     }
@@ -150,6 +154,10 @@ object AvrController {
     }
 
     fun setSurLev(value: String) = submit {
+        if (state.value.dynEq != true) {
+            update { it.copy(error = "Enable Dynamic EQ first") }
+            return@submit
+        }
         var v = matchValue(telnet.exec("PSSURLEV $value", RE_SURLEV, 2500), RE_SURLEV)
         if (v == null) v = matchValue(telnet.exec("PSSURLEV ?", RE_SURLEV), RE_SURLEV)
         val ok = v == value
