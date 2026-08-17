@@ -4,22 +4,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -31,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
@@ -257,6 +262,58 @@ fun ControlScreen(st: AvrState) {
             modifier = Modifier.padding(top = 20.dp),
         ) {
             Text("Refresh status")
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        ProbeSection(st)
+    }
+}
+
+@Composable
+fun ProbeSection(st: AvrState) {
+    Text("Remote probe", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "Press buttons on the AVR remote - every change the receiver reports appears below.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(modifier = Modifier.padding(top = 8.dp)) {
+        if (st.probing) {
+            Button(onClick = { AvrController.stopProbe() }) { Text("Stop") }
+        } else {
+            Button(onClick = { AvrController.startProbe() }) { Text("Probe for 60 s") }
+        }
+        Spacer(Modifier.width(8.dp))
+        OutlinedButton(
+            onClick = { AvrController.clearProbeLog() },
+            enabled = !st.probing && st.probeLog.isNotEmpty(),
+        ) {
+            Text("Clear")
+        }
+    }
+    val logScroll = rememberScrollState()
+    LaunchedEffect(st.probeLog.size) {
+        if (st.probeLog.isNotEmpty()) logScroll.scrollTo(logScroll.maxValue)
+    }
+    Column(
+        modifier = Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .heightIn(max = 260.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .padding(8.dp)
+            .verticalScroll(logScroll)
+    ) {
+        if (st.probeLog.isEmpty()) {
+            Text(
+                if (st.probing) "Listening..." else "No events captured yet",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            st.probeLog.forEach {
+                Text(it, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
         }
     }
 }

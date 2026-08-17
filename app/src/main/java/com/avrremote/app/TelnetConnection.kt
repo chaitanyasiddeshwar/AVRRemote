@@ -55,6 +55,25 @@ class TelnetConnection {
         return null
     }
 
+    /** Reads one line. Returns the line, "" on timeout, null on EOF/disconnect. */
+    fun readLine(timeoutMs: Long): String? {
+        val reader = input ?: return null
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            val line = try {
+                reader.readLine()
+            } catch (_: SocketTimeoutException) {
+                continue
+            } catch (_: Exception) {
+                return null
+            }
+            if (line == null) return null
+            val trimmed = line.trim()
+            if (trimmed.isNotEmpty()) return trimmed
+        }
+        return ""
+    }
+
     fun close() {
         try { socket?.close() } catch (_: Exception) {}
         socket = null

@@ -5,6 +5,7 @@ import android.net.wifi.WifiManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class AvrState(
     val connected: Boolean = false,
@@ -25,6 +26,8 @@ data class AvrState(
     val scanning: Boolean = false,
     val hasScanned: Boolean = false,
     val scanResults: List<DiscoveredDevice> = emptyList(),
+    val probing: Boolean = false,
+    val probeLog: List<String> = emptyList(),
 )
 
 object AvrController {
@@ -33,6 +36,7 @@ object AvrController {
 
     private val telnet = TelnetConnection()
     private val pool = Executors.newSingleThreadExecutor()
+    private val probeStop = AtomicBoolean(false)
     private var appContext: Context? = null
 
     private val RE_ZM = Regex("^ZM\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
@@ -115,6 +119,34 @@ object AvrController {
     fun setRefLev(value: String) = submit {
         val line = telnet.exec("PSREFLEV $value", RE_REFLEV, 2500)
         update { it.copy(refLev = matchValue(line, RE_REFLEV) ?: value) }
+    }
+
+    fun startProbe() = submit {
+        probeStop.set(false)
+        update { it.copy(probing = true, probeLog = emptyList()) }
+        val t0 = System.currentTimeMillis()
+        val deadline = t0 + 60_000
+        while (System.currentTimeMillis() < deadline && !probeStop.get()) {
+            val line = telnet.readLine(500)
+            if (line == null) {
+                update {
+                    it.copy(probeLog = it.probeLog + "--- connection lost ---", probing = false)
+                }
+                return@submit
+            }
+            if (line.isEmpty()) continue
+            val ts = "+%.1fs".format((System.currentTimeMillis() - t0) / 1000.0)
+            update { st -> st.copy(probeLog = (st.probeLog + "$ts  $line").takeLast(300)) }
+        }
+        update { it.copy(probing = false) }
+    }
+
+    fun stopProbe() {
+        probeStop.set(true)
+    }
+
+    fun clearProbeLog() = submit {
+        update { it.copy(probeLog = emptyList()) }
     }
 
     fun setSurLev(value: String) = submit {

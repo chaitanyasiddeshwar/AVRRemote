@@ -21,6 +21,10 @@ receiver exposing the standard network control interface.
 - **Speaker Preset** — switch between the receiver's two speaker presets.
   If the receiver is in standby, the app powers it on first and waits for it
   to boot.
+- **Remote probe** — capture what the physical remote does: start the probe and
+  press buttons on the AVR remote; every state change the receiver reports is
+  logged in the app with timestamps. Handy for discovering undocumented
+  commands.
 
 ## Requirements
 
