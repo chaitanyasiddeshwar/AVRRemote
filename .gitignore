@@ -1,7 +1,21 @@
+# Gradle
 .gradle/
 build/
-local.properties
+.kotlin/
+
+# Android Studio / IntelliJ
 .idea/
 *.iml
 captures/
 .cxx/
+
+# Local environment
+local.properties
+
+# Signing material
+*.keystore
+*.jks
+
+# Outputs (built artifacts live under build/, guard against stray copies)
+*.apk
+*.aab

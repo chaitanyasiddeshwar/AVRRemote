@@ -1,5 +1,6 @@
 package com.avrremote.app
 
+import android.util.Log
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.HttpURLConnection
@@ -46,14 +47,20 @@ object SsdpDiscoverer {
             }
             val text = String(pkt.data, 0, pkt.length, Charsets.ISO_8859_1)
             Regex("LOCATION:\\s*(.+)", RegexOption.IGNORE_CASE)
-                .find(text)?.groupValues?.get(1)?.trim()?.let { locations.add(it) }
+                .find(text)?.groupValues?.get(1)?.trim()?.let {
+                    Log.i(TAG, "SSDP: response from ${pkt.address} -> $it")
+                    locations.add(it)
+                }
         }
         socket.close()
+        Log.i(TAG, "SSDP: ${locations.size} unique location(s)")
 
-        return locations
+        val devices = locations
             .mapNotNull { fetchDevice(it) }
             .distinctBy { it.ip }
             .sortedByDescending { it.isAvrLike() }
+        Log.i(TAG, "SSDP: ${devices.size} device(s) described")
+        return devices
     }
 
     private fun fetchDevice(location: String): DiscoveredDevice? {
@@ -76,7 +83,8 @@ object SsdpDiscoverer {
                 model = tag(xml, "modelName"),
                 serial = serial,
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "SSDP: fetch failed for $location: ${e.message}")
             null
         }
     }
@@ -85,4 +93,6 @@ object SsdpDiscoverer {
         val re = Regex("<$name>(.*?)</$name>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
         return re.find(xml)?.groupValues?.get(1)?.trim() ?: ""
     }
+
+    private const val TAG = "AVRRemote"
 }

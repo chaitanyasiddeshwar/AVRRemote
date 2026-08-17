@@ -172,7 +172,39 @@ fun ControlScreen(st: AvrState) {
         }
 
         SwitchRow("Dynamic EQ", st.dynEq) { AvrController.setDynEq(it) }
-        SwitchRow("Dynamic Volume", st.dynVol) { AvrController.setDynVol(it) }
+
+        Text(
+            "DynEQ reference offset",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        ChipRow(
+            options = listOf("0" to "0 dB", "5" to "5 dB", "10" to "10 dB", "15" to "15 dB"),
+            selected = st.refLev,
+            enabled = st.dynEq == true,
+            onPick = { AvrController.setRefLev(it) },
+        )
+        Text(
+            "Higher offset = milder loudness compensation",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Text(
+            "Dynamic Volume",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 20.dp),
+        )
+        ChipRow(
+            options = listOf("OFF" to "Off", "LIGHT" to "Light", "MEDIUM" to "Medium", "HEAVY" to "Heavy"),
+            selected = st.dynVol,
+            onPick = { AvrController.setDynVol(it) },
+        )
+        Text(
+            "Levels apply only while a Dolby/DTS source is playing",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         Text(
             "Audyssey MultEQ",
@@ -261,13 +293,19 @@ fun SwitchRow(label: String, value: Boolean?, onSet: (Boolean) -> Unit) {
 }
 
 @Composable
-fun ChipRow(options: List<Pair<String, String>>, selected: String?, onPick: (String) -> Unit) {
+fun ChipRow(
+    options: List<Pair<String, String>>,
+    selected: String?,
+    enabled: Boolean = true,
+    onPick: (String) -> Unit,
+) {
     Row(modifier = Modifier.padding(top = 4.dp)) {
         options.forEach { (value, label) ->
             FilterChip(
                 selected = selected == value,
                 onClick = { onPick(value) },
                 label = { Text(label) },
+                enabled = enabled,
                 modifier = Modifier.padding(end = 8.dp),
             )
         }

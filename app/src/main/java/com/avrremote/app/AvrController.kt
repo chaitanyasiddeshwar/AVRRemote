@@ -16,7 +16,8 @@ data class AvrState(
     val deviceModel: String = "",
     val power: String? = null,
     val dynEq: Boolean? = null,
-    val dynVol: Boolean? = null,
+    val dynVol: String? = null,
+    val refLev: String? = null,
     val multEq: String? = null,
     val preset: String? = null,
     val presetSupported: Boolean = true,
@@ -35,7 +36,8 @@ object AvrController {
 
     private val RE_ZM = Regex("^ZM\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
     private val RE_DYNEQ = Regex("^PSDYNEQ\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
-    private val RE_DYNVOL = Regex("^PSDYNVOL\\s*(ON|OFF)", RegexOption.IGNORE_CASE)
+    private val RE_DYNVOL = Regex("^PSDYNVOL\\s*(OFF|LIGHT|MEDIUM|HEAVY)", RegexOption.IGNORE_CASE)
+    private val RE_REFLEV = Regex("^PSREFLEV\\s*(0|5|10|15)", RegexOption.IGNORE_CASE)
     private val RE_MULTEQ = Regex("^PSMULTEQ:\\s*(AUDYSSEY|FLAT|OFF)", RegexOption.IGNORE_CASE)
     private val RE_SPPR = Regex("^SPPR\\s*(1|2)", RegexOption.IGNORE_CASE)
 
@@ -93,10 +95,21 @@ object AvrController {
         update { it.copy(dynEq = if (v != null) v == "ON" else on) }
     }
 
-    fun setDynVol(on: Boolean) = submit {
-        val line = telnet.exec(if (on) "PSDYNVOL ON" else "PSDYNVOL OFF", RE_DYNVOL, 4000)
-        val v = matchValue(line, RE_DYNVOL)
-        update { it.copy(dynVol = if (v != null) v == "ON" else on) }
+    fun setDynVol(value: String) = submit {
+        var v = matchValue(telnet.exec("PSDYNVOL $value", RE_DYNVOL, 2500), RE_DYNVOL)
+        if (v == null) v = matchValue(telnet.exec("PSDYNVOL ?", RE_DYNVOL), RE_DYNVOL)
+        val ok = v == value
+        update {
+            it.copy(
+                dynVol = v ?: it.dynVol,
+                error = if (ok) null else "Dynamic Volume $value only applies while a Dolby/DTS source is playing",
+            )
+        }
+    }
+
+    fun setRefLev(value: String) = submit {
+        val line = telnet.exec("PSREFLEV $value", RE_REFLEV, 2500)
+        update { it.copy(refLev = matchValue(line, RE_REFLEV) ?: value) }
     }
 
     fun setMultEq(curve: String) = submit {
@@ -168,13 +181,15 @@ object AvrController {
         }
         val dynEq = matchValue(telnet.exec("PSDYNEQ ?", RE_DYNEQ), RE_DYNEQ)
         val dynVol = matchValue(telnet.exec("PSDYNVOL ?", RE_DYNVOL), RE_DYNVOL)
+        val refLev = matchValue(telnet.exec("PSREFLEV ?", RE_REFLEV), RE_REFLEV)
         val multEq = matchValue(telnet.exec("PSMULTEQ: ?", RE_MULTEQ), RE_MULTEQ)
         val preset = matchValue(telnet.exec("SPPR ?", RE_SPPR, 4000), RE_SPPR)
         update {
             it.copy(
                 power = power,
                 dynEq = dynEq?.let { v -> v == "ON" },
-                dynVol = dynVol?.let { v -> v == "ON" },
+                dynVol = dynVol,
+                refLev = refLev,
                 multEq = multEq,
                 preset = preset,
                 presetSupported = preset != null,
