@@ -13,11 +13,13 @@ class TelnetConnection {
     private var input: BufferedReader? = null
     private var output: OutputStream? = null
 
+    @Synchronized
     fun isAlive(): Boolean {
         val s = socket ?: return false
-        return s.isConnected && !s.isClosed
+        return s.isConnected && !s.isClosed && !s.isInputShutdown && !s.isOutputShutdown
     }
 
+    @Synchronized
     fun connect(ip: String, port: Int = 23, timeoutMs: Int = 4000) {
         close()
         val s = Socket()
@@ -29,13 +31,19 @@ class TelnetConnection {
     }
 
     /** Sends cmd + "\r", waits for a line matching [expect]. Returns the line or null on timeout/EOF. */
+    @Synchronized
     fun exec(cmd: String, expect: Regex? = null, timeoutMs: Long = 3000): String? {
-        val out = output ?: return null
-        val reader = input ?: return null
+        val out = output
+        val reader = input
+        if (out == null || reader == null) {
+            close()
+            return null
+        }
         try {
             out.write((cmd + "\r").toByteArray())
             out.flush()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            close()
             return null
         }
         if (expect == null) return null
@@ -45,10 +53,14 @@ class TelnetConnection {
                 reader.readLine()
             } catch (_: SocketTimeoutException) {
                 continue
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                close()
                 return null
             }
-            if (line == null) return null
+            if (line == null) {
+                close()
+                return null
+            }
             val trimmed = line.trim()
             if (trimmed.isNotEmpty() && expect.containsMatchIn(trimmed)) return trimmed
         }
@@ -56,6 +68,7 @@ class TelnetConnection {
     }
 
     /** Reads one line. Returns the line, "" on timeout, null on EOF/disconnect. */
+    @Synchronized
     fun readLine(timeoutMs: Long): String? {
         val reader = input ?: return null
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -64,16 +77,21 @@ class TelnetConnection {
                 reader.readLine()
             } catch (_: SocketTimeoutException) {
                 continue
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                close()
                 return null
             }
-            if (line == null) return null
+            if (line == null) {
+                close()
+                return null
+            }
             val trimmed = line.trim()
             if (trimmed.isNotEmpty()) return trimmed
         }
         return ""
     }
 
+    @Synchronized
     fun close() {
         try { socket?.close() } catch (_: Exception) {}
         socket = null

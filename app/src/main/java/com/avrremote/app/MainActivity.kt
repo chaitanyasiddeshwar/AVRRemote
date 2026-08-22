@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -37,9 +39,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AvrController.init(applicationContext)
@@ -56,32 +60,102 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        AvrController.onAppForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AvrController.onAppBackground()
+    }
+}
+
+@Composable
+fun WifiWarningBanner() {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "Wi-Fi Disconnected",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Please connect your phone to your home Wi-Fi network to find and control your AV receiver.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
 }
 
 @Composable
 fun DeviceScreen(st: AvrState) {
-    LaunchedEffect(Unit) { AvrController.autoConnect() }
+    LaunchedEffect(Unit) {
+        AvrController.autoConnect()
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
         Text("AVR Remote", style = MaterialTheme.typography.headlineSmall)
         Text(
             "Control your Denon/Marantz receiver",
             style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 12.dp),
         )
 
-        st.error?.let {
-            Text(
-                it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 12.dp),
-            )
+        if (!st.isWifiConnected) {
+            WifiWarningBanner()
+        }
+
+        st.error?.let { err ->
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row {
+                        Button(
+                            onClick = { AvrController.retryConnect() },
+                            enabled = !st.busy && !st.scanning && st.isWifiConnected,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Retry")
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(
+                            onClick = { AvrController.scan() },
+                            enabled = !st.busy && !st.scanning && st.isWifiConnected,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Scan network")
+                        }
+                    }
+                }
+            }
         }
 
         val saved = AvrRegistry.avrs
@@ -89,7 +163,7 @@ fun DeviceScreen(st: AvrState) {
             Text(
                 "Saved receivers",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+                modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
             )
             saved.forEach { rec ->
                 DeviceRow(rec.name, rec.model, rec.ip) {
@@ -98,21 +172,23 @@ fun DeviceScreen(st: AvrState) {
             }
         }
 
-        Button(
-            onClick = { AvrController.scan() },
-            enabled = !st.scanning,
-            modifier = Modifier
-                .padding(top = 20.dp)
-                .fillMaxWidth(),
-        ) {
-            if (st.scanning) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                )
-                Spacer(Modifier.width(8.dp))
+        if (st.error == null) {
+            Button(
+                onClick = { AvrController.scan() },
+                enabled = !st.scanning && !st.busy && st.isWifiConnected,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .fillMaxWidth(),
+            ) {
+                if (st.scanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(if (st.scanning) "Scanning..." else "Scan network")
             }
-            Text(if (st.scanning) "Scanning..." else "Scan network")
         }
 
         if (st.scanResults.isNotEmpty()) {
@@ -155,8 +231,12 @@ fun ControlScreen(st: AvrState) {
             .fillMaxSize()
             .statusBarsPadding()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
+        if (!st.isWifiConnected) {
+            WifiWarningBanner()
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(st.deviceName, style = MaterialTheme.typography.titleLarge)
@@ -170,13 +250,33 @@ fun ControlScreen(st: AvrState) {
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        st.error?.let {
-            Text(
-                it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
+        st.error?.let { err ->
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = { AvrController.refresh() },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text("Retry")
+                    }
+                }
+            }
         }
 
         SwitchRow("Dynamic EQ", st.dynEq) { AvrController.setDynEq(it) }
@@ -308,7 +408,7 @@ fun ProbeSection(st: AvrState) {
             .heightIn(max = 260.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
             .padding(8.dp)
-            .verticalScroll(logScroll)
+            .verticalScroll(logScroll),
     ) {
         if (st.probeLog.isEmpty()) {
             Text(
@@ -330,7 +430,7 @@ fun DeviceRow(name: String, model: String, sub: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp)
+            .padding(vertical = 10.dp),
     ) {
         Text(name.ifEmpty { "Unknown device" }, style = MaterialTheme.typography.titleMedium)
         Text(
