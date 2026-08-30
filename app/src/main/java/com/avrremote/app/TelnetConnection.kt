@@ -67,6 +67,65 @@ class TelnetConnection {
         return null
     }
 
+    /**
+     * Sends cmd + "\r", and collects all lines received until an idle period of [idleTimeoutMs]
+     * or until [timeoutMs] total deadline is reached, or until [endMarker] matches.
+     */
+    @Synchronized
+    fun collectLines(
+        cmd: String,
+        timeoutMs: Long = 1500,
+        idleTimeoutMs: Long = 350,
+        endMarker: Regex? = null,
+    ): List<String> {
+        val out = output
+        val reader = input
+        if (out == null || reader == null) {
+            close()
+            return emptyList()
+        }
+        try {
+            out.write((cmd + "\r").toByteArray())
+            out.flush()
+        } catch (e: Exception) {
+            close()
+            return emptyList()
+        }
+
+        val lines = mutableListOf<String>()
+        val deadline = System.currentTimeMillis() + timeoutMs
+        var lastReceivedTime = System.currentTimeMillis()
+        var hasReceivedAny = false
+
+        while (System.currentTimeMillis() < deadline) {
+            val line = try {
+                reader.readLine()
+            } catch (_: SocketTimeoutException) {
+                if (hasReceivedAny && (System.currentTimeMillis() - lastReceivedTime) >= idleTimeoutMs) {
+                    break
+                }
+                continue
+            } catch (e: Exception) {
+                close()
+                return lines
+            }
+            if (line == null) {
+                close()
+                return lines
+            }
+            val trimmed = line.trim()
+            if (trimmed.isNotEmpty()) {
+                lines.add(trimmed)
+                hasReceivedAny = true
+                lastReceivedTime = System.currentTimeMillis()
+                if (endMarker != null && endMarker.containsMatchIn(trimmed)) {
+                    break
+                }
+            }
+        }
+        return lines
+    }
+
     /** Reads one line. Returns the line, "" on timeout, null on EOF/disconnect. */
     @Synchronized
     fun readLine(timeoutMs: Long): String? {

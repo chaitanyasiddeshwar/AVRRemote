@@ -32,6 +32,9 @@ data class AvrState(
     val scanResults: List<DiscoveredDevice> = emptyList(),
     val probing: Boolean = false,
     val probeLog: List<String> = emptyList(),
+    val channelSettings: ChannelSettingsSummary = ChannelSettingsSummary(),
+    val channelSettingsLoading: Boolean = false,
+    val channelSettingsError: String? = null,
 )
 
 object AvrController {
@@ -222,6 +225,8 @@ object AvrController {
 
     fun refresh() = submit { refreshBlocking() }
 
+    fun fetchChannelSettings() = submit { fetchChannelSettingsBlocking() }
+
     private fun ensureConnected(): Boolean {
         if (telnet.isAlive()) return true
         val ip = state.value.deviceIp.ifEmpty { AvrRegistry.activeRecord()?.ip ?: "" }
@@ -404,6 +409,7 @@ object AvrController {
                 )
             }
             refreshBlocking()
+            fetchChannelSettingsBlocking()
             true
         } catch (e: Exception) {
             telnet.close()
@@ -447,6 +453,57 @@ object AvrController {
                 presetSupported = preset != null,
                 error = null,
             )
+        }
+    }
+
+    private fun fetchChannelSettingsBlocking() {
+        if (!ensureConnected()) {
+            update { it.copy(channelSettingsError = "Not connected to receiver", channelSettingsLoading = false) }
+            return
+        }
+        update { it.copy(channelSettingsLoading = true, channelSettingsError = null) }
+        try {
+            val ip = state.value.deviceIp.ifEmpty { AvrRegistry.activeRecord()?.ip ?: "" }
+
+            // 1. Audyssey Binary port 1256 (GET_AVRSTS ChSetup)
+            val port1256Active = if (ip.isNotEmpty()) {
+                try { AvrBinaryProtocol.fetchActiveChannels(ip) } catch (_: Exception) { null }
+            } else null
+
+            // 2. Telnet queries
+            val sspcLines = telnet.collectLines("SSSPC ?", 1200, 300)
+            val trimLines = telnet.collectLines("CV ?", 1200, 300, Regex("CVEND", RegexOption.IGNORE_CASE))
+            val distanceLines = telnet.collectLines("SSSDE ?", 1500, 350)
+            val crossoverLines = telnet.collectLines("SSCFR ?", 1500, 350)
+            val levelLines = telnet.collectLines("SSLEV ?", 1500, 350, Regex("SSLEV\\s*END", RegexOption.IGNORE_CASE))
+            val lpfLine = telnet.exec("SSLFL ?", Regex("^SSLFL", RegexOption.IGNORE_CASE), 1200)
+            val subModeLine = telnet.exec("SSSWO ?", Regex("^SSSWO", RegexOption.IGNORE_CASE), 1200)
+
+            val summary = ChannelSettingsParser.parseChannelSettings(
+                distanceLines = distanceLines,
+                crossoverLines = crossoverLines,
+                levelLines = levelLines,
+                trimLines = trimLines,
+                sspcLines = sspcLines,
+                lpfLfeLine = lpfLine,
+                subModeLine = subModeLine,
+                port1256ActiveChannels = port1256Active,
+            )
+
+            update {
+                it.copy(
+                    channelSettings = summary,
+                    channelSettingsLoading = false,
+                    channelSettingsError = if (summary.channels.isEmpty()) "No channel settings reported by receiver" else null,
+                )
+            }
+        } catch (e: Exception) {
+            update {
+                it.copy(
+                    channelSettingsLoading = false,
+                    channelSettingsError = "Failed to load channel settings: ${e.message}",
+                )
+            }
         }
     }
 
